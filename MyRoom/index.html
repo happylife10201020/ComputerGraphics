@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My 3D Room</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- 1. 기본 씬 설정 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x333333); // 어두운 배경
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(6, 4, 8); // 방을 내려다보는 각도
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 1.5, 0); // 방 중앙을 바라보도록 설정
+        controls.update();
+
+        // 조명
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // 은은한 주변광
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1.5); // 메인 포인트 라이트
+        pointLight.position.set(2, 4, 2);
+        scene.add(pointLight);
+
+        // --- 2. 헬퍼 함수 (간단한 Mesh 생성) ---
+        function createBox(width, height, depth, color, x=0, y=0, z=0) {
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const material = new THREE.MeshPhongMaterial({ color: color });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(x, y, z);
+            return mesh;
+        }
+
+        function createCylinder(radius, height, color, x=0, y=0, z=0) {
+            const geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
+            const material = new THREE.MeshPhongMaterial({ color: color });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(x, y, z);
+            return mesh;
+        }
+
+        // --- 3. 씬 그래프 구현 시작 ---
+
+        // Root Node - 방 전체
+        const My_Room_Root = new THREE.Group();
+        scene.add(My_Room_Root);
+
+        // 3.1. 방의 기본 구조
+        const roomSizeX = 8;
+        const roomSizeY = 3;
+        const roomSizeZ = 8;
+        const wallThickness = 0.1;
+
+        // Floor (바닥)
+        const Floor_Mesh = createBox(roomSizeX, wallThickness, roomSizeZ, 0x666666);
+        Floor_Mesh.position.y = -wallThickness / 2;
+        My_Room_Root.add(Floor_Mesh);
+
+        // Walls (벽) - 간단하게 3면만 (카메라 시점을 위해 한쪽 벽 제거)
+        const Wall_Mesh_Back = createBox(roomSizeX, roomSizeY, wallThickness, 0xcccccc);
+        Wall_Mesh_Back.position.set(0, roomSizeY / 2, -roomSizeZ / 2);
+        My_Room_Root.add(Wall_Mesh_Back);
+
+        const Wall_Mesh_Left = createBox(wallThickness, roomSizeY, roomSizeZ, 0xcccccc);
+        Wall_Mesh_Left.position.set(-roomSizeX / 2, roomSizeY / 2, 0);
+        My_Room_Root.add(Wall_Mesh_Left);
+        
+        const Wall_Mesh_Right = createBox(wallThickness, roomSizeY, roomSizeZ, 0xcccccc);
+        Wall_Mesh_Right.position.set(roomSizeX / 2, roomSizeY / 2, 0);
+        My_Room_Root.add(Wall_Mesh_Right);
+
+        // Door (문)
+        const Door_Pivot = new THREE.Group(); // 문 회전축
+        Door_Pivot.position.set(roomSizeX / 2 - wallThickness / 2, 0, roomSizeZ / 2 - 2); // 오른쪽 벽에 문 배치
+        My_Room_Root.add(Door_Pivot);
+
+        const Door_Mesh = createBox(1, 2, wallThickness * 2, 0x8B4513);
+        Door_Mesh.position.set(-0.5, 1, 0); // 피벗으로부터 상대 위치
+        Door_Pivot.add(Door_Mesh);
+
+        const Doorknob_Mesh = createCylinder(0.05, 0.1, 0xAAAA00);
+        Doorknob_Mesh.position.set(-0.95/2 - 0.05, 1, 0.05); // 문으로부터 상대 위치
+        Doorknob_Mesh.rotation.z = Math.PI / 2;
+        Door_Mesh.add(Doorknob_Mesh);
+
+        // Window (창문)
+        const Window_Frame = createBox(2, 1.5, wallThickness * 2, 0x8B4513);
+        Window_Frame.position.set(-roomSizeX / 2 + wallThickness / 2, 1.75, roomSizeZ / 4); // 왼쪽 벽에 창문 배치
+        My_Room_Root.add(Window_Frame);
+
+        const Window_Glass_Mesh = createBox(1.8, 1.3, wallThickness, 0xADD8E6, 0, 0, 0.05); // 유리
+        Window_Frame.add(Window_Glass_Mesh);
+
+        const Curtain_Rail = createCylinder(0.02, 2.2, 0x333333);
+        Curtain_Rail.position.set(0, 0.8, wallThickness * 1.5);
+        Window_Frame.add(Curtain_Rail);
+
+        const Curtain_Mesh = createBox(2, 1.5, 0.05, 0xFFFFFF, 0, 0, 0.05);
+        Curtain_Mesh.material.transparent = true;
+        Curtain_Mesh.material.opacity = 0.7;
+        Curtain_Rail.add(Curtain_Mesh);
+
+
+        // 3.2. 가구 및 기타 배치
+        
+        // Bed (침대)
+        const Bed = new THREE.Group();
+        Bed.position.set(-roomSizeX / 2 + 1.5, 0, -roomSizeZ / 2 + 2); // 방 왼쪽 하단
+        My_Room_Root.add(Bed);
+
+        const Bed_Frame_Mesh = createBox(1.5, 0.3, 2.2, 0x5555BB);
+        Bed_Frame_Mesh.position.y = 0.15;
+        Bed.add(Bed_Frame_Mesh);
+
+        const Mattress_Mesh = createBox(1.4, 0.2, 2, 0xDDDDDD);
+        Mattress_Mesh.position.y = 0.3 + 0.1;
+        Bed.add(Mattress_Mesh);
+
+        const Pillow_1_Mesh = createBox(0.6, 0.1, 0.4, 0xEEEEEE);
+        Pillow_1_Mesh.position.set(0.3, 0.45, -0.8);
+        Bed.add(Pillow_1_Mesh);
+
+        const Pillow_2_Mesh = Pillow_1_Mesh.clone();
+        Pillow_2_Mesh.position.set(-0.3, 0.45, -0.8);
+        Bed.add(Pillow_2_Mesh);
+
+        const Blanket_Mesh = createBox(1.4, 0.05, 1.2, 0xAAAAAA);
+        Blanket_Mesh.position.set(0, 0.45, 0.4);
+        Bed.add(Blanket_Mesh);
+
+
+        // Wardrobe (옷장)
+        const Wardrobe = new THREE.Group();
+        Wardrobe.position.set(roomSizeX / 2 - 0.75, 0, -roomSizeZ / 2 + 1); // 방 오른쪽 하단
+        My_Room_Root.add(Wardrobe);
+
+        const Wardrobe_Frame_Mesh = createBox(1.5, 2.5, 0.8, 0x777777);
+        Wardrobe_Frame_Mesh.position.y = 1.25;
+        Wardrobe.add(Wardrobe_Frame_Mesh);
+
+        const Wardrobe_Door_Pivot_L = new THREE.Group();
+        Wardrobe_Door_Pivot_L.position.set(-0.75 / 2, 1.25, 0.4);
+        Wardrobe.add(Wardrobe_Door_Pivot_L);
+        const Wardrobe_Door_Mesh_L = createBox(0.75, 2.5, 0.05, 0xAAAAAA);
+        Wardrobe_Door_Mesh_L.position.x = 0.75 / 2;
+        Wardrobe_Door_Pivot_L.add(Wardrobe_Door_Mesh_L);
+
+        const Wardrobe_Door_Pivot_R = new THREE.Group();
+        Wardrobe_Door_Pivot_R.position.set(0.75 / 2, 1.25, 0.4);
+        Wardrobe.add(Wardrobe_Door_Pivot_R);
+        const Wardrobe_Door_Mesh_R = createBox(0.75, 2.5, 0.05, 0xAAAAAA);
+        Wardrobe_Door_Mesh_R.position.x = -0.75 / 2;
+        Wardrobe_Door_Pivot_R.add(Wardrobe_Door_Mesh_R);
+        
+        const Clothes_Inside_1 = createBox(0.5, 0.8, 0.2, 0x88CC88);
+        Clothes_Inside_1.position.set(-0.3, 1.5, 0); // 옷장 안
+        Wardrobe.add(Clothes_Inside_1);
+        const Clothes_Inside_2 = createBox(0.5, 0.7, 0.2, 0xCC8888);
+        Clothes_Inside_2.position.set(0.3, 1.4, 0);
+        Wardrobe.add(Clothes_Inside_2);
+
+        // Bookshelf (책장)
+        const Bookshelf = new THREE.Group();
+        Bookshelf.position.set(-roomSizeX / 2 + 0.75, 0, roomSizeZ / 2 - 2); // 방 왼쪽 상단
+        My_Room_Root.add(Bookshelf);
+
+        const Bookshelf_Frame_Mesh = createBox(1.5, 2, 0.3, 0x664422);
+        Bookshelf_Frame_Mesh.position.y = 1;
+        Bookshelf.add(Bookshelf_Frame_Mesh);
+
+        const Book_1 = createBox(0.1, 0.5, 0.2, 0x8B0000);
+        Book_1.position.set(-0.4, 1.5, 0);
+        Bookshelf.add(Book_1);
+        const Book_2 = createBox(0.1, 0.6, 0.2, 0x008B00);
+        Book_2.position.set(-0.2, 1.55, 0);
+        Bookshelf.add(Book_2);
+        const Book_3 = createBox(0.1, 0.4, 0.2, 0x00008B);
+        Book_3.position.set(0, 1.45, 0);
+        Bookshelf.add(Book_3);
+        const Book_4 = createBox(0.1, 0.55, 0.2, 0x8B8B00);
+        Book_4.position.set(0.2, 0.8, 0); // 다른 선반
+        Bookshelf.add(Book_4);
+        const Book_5 = createBox(0.1, 0.45, 0.2, 0x8B008B);
+        Book_5.position.set(0.4, 0.75, 0);
+        Bookshelf.add(Book_5);
+
+        // Desk (책상)
+        const Desk = new THREE.Group();
+        Desk.position.set(roomSizeX / 2 - 3, 0, roomSizeZ / 2 - 3); // 방 오른쪽 상단
+        My_Room_Root.add(Desk);
+
+        const Desk_Surface_Mesh = createBox(2, 0.8, 1, 0x8B4513);
+        Desk_Surface_Mesh.position.y = 0.4;
+        Desk.add(Desk_Surface_Mesh);
+
+        // 책상 위 아이템들
+        const Computer_PC = createBox(0.3, 0.6, 0.8, 0x333333);
+        Computer_PC.position.set(-0.7, 0.8 + 0.3, -0.2); // 책상 위
+        Desk.add(Computer_PC);
+
+        const Monitor_1 = new THREE.Group();
+        Monitor_1.position.set(-0.3, 0.8 + 0.4, 0);
+        Desk.add(Monitor_1);
+        const Monitor_Stand_Mesh_1 = createBox(0.1, 0.2, 0.2, 0x555555);
+        Monitor_Stand_Mesh_1.position.y = -0.1;
+        Monitor_1.add(Monitor_Stand_Mesh_1);
+        const Monitor_Screen_Mesh_1 = createBox(0.8, 0.5, 0.05, 0x000000);
+        Monitor_Screen_Mesh_1.position.y = 0.2;
+        Monitor_1.add(Monitor_Screen_Mesh_1);
+
+        const Monitor_2 = new THREE.Group();
+        Monitor_2.position.set(0.6, 0.8 + 0.4, 0);
+        Desk.add(Monitor_2);
+        const Monitor_Stand_Mesh_2 = createBox(0.1, 0.2, 0.2, 0x555555);
+        Monitor_Stand_Mesh_2.position.y = -0.1;
+        Monitor_2.add(Monitor_Stand_Mesh_2);
+        const Monitor_Screen_Mesh_2 = createBox(0.8, 0.5, 0.05, 0x000000);
+        Monitor_Screen_Mesh_2.position.y = 0.2;
+        Monitor_2.add(Monitor_Screen_Mesh_2);
+
+        const Keyboard = createBox(0.7, 0.05, 0.3, 0x444444);
+        Keyboard.position.set(0.1, 0.8 + 0.025, 0.3);
+        Desk.add(Keyboard);
+
+        const Mousepad = createBox(0.2, 0.005, 0.25, 0x222222);
+        Mousepad.position.set(0.8, 0.8 + 0.0025, 0.35);
+        Desk.add(Mousepad);
+
+        const Mouse = createBox(0.08, 0.04, 0.12, 0x777777);
+        Mouse.position.y = 0.02;
+        Mousepad.add(Mouse); // 마우스는 마우스패드의 자식
+
+        const Desk_Lamp = new THREE.Group();
+        Desk_Lamp.position.set(-0.9, 0.8 + 0.1, 0.3);
+        Desk.add(Desk_Lamp);
+        const Lamp_Base_Mesh = createCylinder(0.15, 0.2, 0x999900);
+        Desk_Lamp.add(Lamp_Base_Mesh);
+        const Lamp_Light_Mesh = createCylinder(0.05, 0.3, 0xFFFF00);
+        Lamp_Light_Mesh.position.set(0, 0.25, 0);
+        Desk_Lamp.add(Lamp_Light_Mesh);
+
+        const Wet_Wipes = createBox(0.15, 0.1, 0.15, 0xADD8E6);
+        Wet_Wipes.position.set(-0.8, 0.8 + 0.05, 0.8);
+        Desk.add(Wet_Wipes);
+
+        const Audio_Interface = new THREE.Group();
+        Audio_Interface.position.set(0.2, 0.8 + 0.1, -0.4);
+        Desk.add(Audio_Interface);
+        const Audio_Interface_Body = createBox(0.6, 0.2, 0.3, 0x222222);
+        Audio_Interface.add(Audio_Interface_Body);
+        const Knob_1 = createCylinder(0.04, 0.05, 0xAAAAAA);
+        Knob_1.position.set(-0.15, 0.1 + 0.025, 0.1);
+        Audio_Interface.add(Knob_1);
+        const Knob_2 = Knob_1.clone();
+        Knob_2.position.set(0.15, 0.1 + 0.025, 0.1);
+        Audio_Interface.add(Knob_2);
+        const Input_Jack_1 = createCylinder(0.05, 0.1, 0x888888);
+        Input_Jack_1.position.set(-0.25, 0.1 + 0.05, 0.1);
+        Audio_Interface.add(Input_Jack_1);
+
+
+        // Air Purifier (공기청정기)
+        const Air_Purifier = createBox(0.5, 1, 0.5, 0xEEEEEE);
+        Air_Purifier.position.set(-3, 0.5, 0); // 방 중앙 근처
+        My_Room_Root.add(Air_Purifier);
+
+        // Power Strip (멀티탭)
+        const Power_Strip = new THREE.Group();
+        Power_Strip.position.set(-4.9, 0.2, -4); // 벽 옆
+        My_Room_Root.add(Power_Strip);
+
+        const Power_Strip_Body = createBox(0.05, 0.1, 0.5, 0x333333);
+        Power_Strip.add(Power_Strip_Body);
+        const Power_Cable_1 = createCylinder(0.01, 1, 0x555555, 0.03, 0.5, 0); // 멀티탭에 꽂힌 케이블
+        Power_Strip.add(Power_Cable_1);
+        const Power_Cable_2 = createCylinder(0.01, 0.8, 0x555555, 0.03, 0.4, 0.1);
+        Power_Strip.add(Power_Cable_2);
+
+        // Guitar Stand 1 (일렉 기타)
+        const Guitar_Stand_1 = new THREE.Group();
+        Guitar_Stand_1.position.set(1.5, 0, -3.5); // 방에 배치
+        My_Room_Root.add(Guitar_Stand_1);
+        const Stand_Base_1 = createBox(0.2, 0.1, 0.3, 0x666666);
+        Guitar_Stand_1.add(Stand_Base_1);
+        const Stand_Arm_1 = createCylinder(0.03, 0.8, 0x666666, 0, 0.4, 0);
+        Guitar_Stand_1.add(Stand_Arm_1);
+
+        const Electric_Guitar = new THREE.Group();
+        Electric_Guitar.rotation.z = Math.PI / 2 + 0.1; // 스탠드에 기대어 놓는 각도
+        Electric_Guitar.position.set(0.3, 0.6, 0); // 스탠드로부터 상대적 위치
+        Guitar_Stand_1.add(Electric_Guitar);
+
+        const Guitar_Body = createBox(0.2, 0.8, 0.05, 0xAA2222);
+        Electric_Guitar.add(Guitar_Body);
+        const Guitar_Neck = createBox(0.05, 0.6, 0.03, 0x8B4513);
+        Guitar_Neck.position.set(0, 0.4, 0);
+        Guitar_Body.add(Guitar_Neck);
+        const Guitar_Head = createBox(0.1, 0.2, 0.03, 0x8B4513);
+        Guitar_Head.position.set(0, 0.4, 0);
+        Guitar_Neck.add(Guitar_Head);
+        
+        const Tuning_Peg_1 = createCylinder(0.02, 0.05, 0xAAAAAA, -0.05, 0.05, 0);
+        Tuning_Peg_1.rotation.x = Math.PI / 2;
+        Guitar_Head.add(Tuning_Peg_1);
+        const Tuning_Peg_2 = Tuning_Peg_1.clone(); Tuning_Peg_2.position.x = -0.05; Tuning_Peg_2.position.y = -0.05;
+        Guitar_Head.add(Tuning_Peg_2);
+        const Tuning_Peg_3 = Tuning_Peg_1.clone(); Tuning_Peg_3.position.x = -0.05; Tuning_Peg_3.position.y = -0.15;
+        Guitar_Head.add(Tuning_Peg_3);
+        const Tuning_Peg_4 = Tuning_Peg_1.clone(); Tuning_Peg_4.position.x = 0.05; Tuning_Peg_4.position.y = 0.05;
+        Guitar_Head.add(Tuning_Peg_4);
+        const Tuning_Peg_5 = Tuning_Peg_1.clone(); Tuning_Peg_5.position.x = 0.05; Tuning_Peg_5.position.y = -0.05;
+        Guitar_Head.add(Tuning_Peg_5);
+        const Tuning_Peg_6 = Tuning_Peg_1.clone(); Tuning_Peg_6.position.x = 0.05; Tuning_Peg_6.position.y = -0.15;
+        Guitar_Head.add(Tuning_Peg_6);
+
+        const Pickup_1 = createBox(0.15, 0.03, 0.02, 0x333333);
+        Pickup_1.position.set(0, 0.2, 0.025);
+        Guitar_Body.add(Pickup_1);
+        const Pickup_2 = Pickup_1.clone();
+        Pickup_2.position.set(0, -0.1, 0.025);
+        Guitar_Body.add(Pickup_2);
+        const Volume_Knob = createCylinder(0.03, 0.03, 0xAAAAAA, 0.05, -0.2, 0.04);
+        Guitar_Body.add(Volume_Knob);
+        const Tone_Knob = Volume_Knob.clone();
+        Tone_Knob.position.x = -0.05;
+        Guitar_Body.add(Tone_Knob);
+
+
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        const loader = new GLTFLoader();
+
+        // Guitar Stand 2 (베이스 기타)
+        loader.load(
+            'percussion_bass_guitar.glb', // 여기에 파일명을 정확히 입력하세요.
+            function (gltf) {
+                const bassGuitarModel = gltf.scene;
+                
+                // 모델 크기, 위치, 회전 조절
+                // 이 값들은 모델마다 다르므로 직접 조절하며 최적의 값을 찾아야 합니다.
+                bassGuitarModel.scale.set(0.2, 0.2, 0.2); 
+                bassGuitarModel.position.set(1.8, 1.4, -3.5);
+                bassGuitarModel.rotation.y = Math.PI / 4;
+                bassGuitarModel.rotation.x = Math.PI / 4;
+                
+                scene.add(bassGuitarModel);
+            },
+            undefined, // 로딩 진행률 콜백 (필요 시 사용)
+            function (error) {
+                console.error('베이스 기타 모델을 로드하는 중 오류가 발생했습니다:', error);
+                alert('percussion_bass_guitar.glb 파일을 찾을 수 없습니다. 파일이 index.html과 같은 폴더에 있는지 확인하세요.');
+            }
+        );
+
+
+        // --- 4. 렌더 루프 및 이벤트 핸들러 ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
