@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang = "en">
+<head>
+    <meta charset = "UTF-8">
+    <title>Practice</title>
+</head>
+
+<body>
+    <script src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/lights/RectAreaLightUniformsLib.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/helpers/RectAreaLightHelper.js"></script>
+
+    <script>
+        const scene = new THREE.Scene() ;
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100) ;
+        camera.position.set(50, 30, -80) ;
+        camera.lookAt(0, 0, 0) ;
+        const renderer = new THREE.WebGLRenderer() ;
+        renderer.setSize(window.innerWidth, window.innerHeight) ;
+        document.body.appendChild(renderer.domElement) ;
+
+        THREE.RectAreaLightUniformsLib.init() ;
+        const light = new THREE.RectAreaLight(0xFFFFFF, 100, 4, 5) ;
+        light.position.set(10, 20, 0) ;
+        light.lookAt(0, 0, 0) ;
+        scene.add(light) ;
+        const helper = new THREE.RectAreaLightHelper(light);
+        light.add(helper);
+
+        const ambientLight = new THREE.AmbientLight(0x404040, 1) ;
+        scene.add(ambientLight) ;
+
+        const sphere = new THREE.Mesh(
+        new THREE.SphereGeometry(5, 50, 50),
+        new THREE.MeshStandardMaterial({color : "blue", wireframe: false})
+        );
+        sphere.position.set(-3, -5, 4) ;
+        scene.add(sphere) ;
+
+        const cylinder = new THREE.Mesh(
+            new THREE.CylinderGeometry(5, 10, 10, 32),
+            new THREE.MeshStandardMaterial({color: "red"}),
+        );
+        cylinder.position.set(0, 0, 5) ;
+        scene.add(cylinder) ;
+
+        const torus = new THREE.Mesh(
+            new THREE.TorusGeometry(5, 3, 100, 32),
+            new THREE.MeshStandardMaterial({color: "yellow"})
+        )
+        torus.position.set(10, 10, 10) ;
+        scene.add(torus) ;
+
+        let previousTime = 0 ;
+        function animate(t) {
+            t= Date.now() ;
+            if(t - previousTime >= 1000) {
+                light.position.x = (light.position.x + 1) % 20 ;
+                previousTime = t ;
+            }
+            renderer.render(scene, camera) ;
+            window.requestAnimationFrame(animate) ;
+        }
+        animate(Date.now())
+    </script>
+</body>
+</html>

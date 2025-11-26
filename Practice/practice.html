@@ -1,13 +1,86 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset = 'utf-8'>
-        <title>ThreeJSProgram-01</title>
-        <script src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <style></style>
-    </head>
+<html lang = "en">
+<head>
+    <meta charset = "UTF-8">
+    <title>Practice</title>
+</head>
 
-    <body>
-        
-    </body>
+<body>
+    <script src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src= "https://cdn.jsdelivr.net/npm/dat.gui/build/dat.gui.min.js"></script>
+    <script>
+        const scene = new THREE.Scene() ;
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000) ;
+        const renderer = new THREE.WebGLRenderer() ;
+        renderer.setSize(window.innerWidth, window.innerHeight) ;
+        renderer.shadowMap.enabled = true ;
+        document.body.appendChild(renderer.domElement) ;
+
+        const light = new THREE.SpotLight() ;
+        light.position.set(170, 330, -10) ;
+        light.castShadow = true ;
+        scene.add(light) ;
+
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5) ;
+        scene.add(ambientLight) ;
+
+        const litCube = new THREE.Mesh(
+            new THREE.BoxGeometry(50, 50, 50),
+            new THREE.MeshPhongMaterial({color: "red"}) 
+        ) ;
+        litCube.castShadow = true ;
+        litCube.receiveShadow = true ;
+        litCube.position.y = 50 ;
+        scene.add(litCube) ;
+
+        const mySphere = new THREE.Mesh(
+            new THREE.SphereGeometry(50, 50, 50),
+            new THREE.MeshPhongMaterial({color: "blue", shininess: 500})
+        )
+        mySphere.position.y = 50 ;
+        mySphere.castShadow = true ;
+        mySphere.receiveShadow = true ;
+        scene.add(mySphere) ;
+
+        const plane = new THREE.Mesh(
+            new THREE.PlaneGeometry(400, 200, 10, 10),
+            new THREE.MeshLambertMaterial({color: 0xFFFFFF}) 
+        ) ;
+        plane.rotation.x = -Math.PI / 2 ;
+        plane.position.y = -25 ;
+        plane.receiveShadow = true ;
+        scene.add(plane) ;
+
+        const gui = new dat.GUI() ;
+        const params = {
+            rotationSpeed:0.01,
+            cubeColor: litCube.material.color.getHex(),
+            lightIntensity: 1
+        } ;
+        gui.add(params, 'rotationSpeed', 0, 0.1).name('Rotation Speed') ;
+        gui.addColor(params, 'cubeColor').name('Cube Color').onChange(function(value){
+            litCube.material.color.setHex(value) ;
+        }) ;
+        gui.add(params, 'lightIntensity', 0, 3).name('Light Intensity').onChange(function(value){
+            light.intensity = value ;
+        }) ;
+
+        function animate(t) {
+            camera.position.x = Math.sin(t / 1000) * 300 ;
+            camera.position.y = 150 ;
+            camera.position.z = Math.cos(t/1000) * 300 ;
+            camera.lookAt( scene.position ) ;
+
+            litCube.position.x = Math.cos(t/600) * 85 ;
+            litCube.position.y = 60 - Math.sin(t / 900) * 25 ;
+            litCube.position.z = Math.sin(t/600) * 85 ;
+            litCube.rotation.x  += params.rotationSpeed
+            litCube.rotation.y += params.rotationSpeed ;
+
+            renderer.render( scene, camera ) ;
+            window.requestAnimationFrame(animate) ;
+        }
+        animate(new Date().getTime()) ;
+    </script>
+</body>
 </html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Three.js Car Movement</title>
+</head>
+<body style="margin:0; overflow:hidden;">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // 🚗 기본 세팅
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 60, 120);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(100, 200, 100);
+    scene.add(light);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(500, 500),
+      new THREE.MeshLambertMaterial({ color: 0x808080 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    // 🚘 1. 바퀴 하나 생성
+    function createWheel(radius = 4, width = 2, color = 0x333333) {
+      const geometry = new THREE.CylinderGeometry(radius, radius, width, 32);
+      const material = new THREE.MeshStandardMaterial({ color });
+      const wheel = new THREE.Mesh(geometry, material);
+      wheel.rotation.z = Math.PI / 2; // 눕히기
+      return wheel;
+    }
+
+    // 🚘 2. 바퀴 4개 생성
+    function createWheels() {
+      const positions = [
+        [10, 4, 12], [-10, 4, 12], // 앞
+        [10, 4, -12], [-10, 4, -12] // 뒤
+      ];
+      return positions.map(pos => {
+        const w = createWheel();
+        w.position.set(...pos);
+        scene.add(w);
+        return w;
+      });
+    }
+
+    // 🚘 3. 차체 생성
+    function createCarBody() {
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(25, 8, 40),
+        new THREE.MeshStandardMaterial({ color: 0xff0000 })
+      );
+      body.position.y = 8;
+      scene.add(body);
+
+      const cabin = new THREE.Mesh(
+        new THREE.BoxGeometry(18, 6, 20),
+        new THREE.MeshStandardMaterial({ color: 0x0000ff })
+      );
+      cabin.position.set(0, 13, -3);
+      scene.add(cabin);
+
+      return { body, cabin };
+    }
+
+    // 🚘 4. 자동차 전체 생성
+    function createCar() {
+      const wheels = createWheels();
+      const { body, cabin } = createCarBody();
+      const car = new THREE.Group();
+      wheels.forEach(w => car.add(w));
+      car.add(body);
+      car.add(cabin);
+      scene.add(car);
+      return car;
+    }
+
+    const car = createCar();
+    car.position.set(0, 0, 0);
+
+    // 🚦 5. 이동 제어 변수
+    let speed = 0;
+    let turnSpeed = 0;
+    const maxSpeed = 1.5;
+    const accel = 0.05;
+    const turnRate = 0.03;
+    const friction = 0.98;
+
+    const keys = {};
+    window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+    window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+    // 🚀 6. 애니메이션 루프
+    function animate() {
+      // ----- 입력 처리 -----
+      if (keys["w"]) speed = Math.min(speed + accel, maxSpeed);    // 전진
+      if (keys["s"]) speed = Math.max(speed - accel, -maxSpeed);   // 후진
+      if (keys["a"]) turnSpeed =  turnRate;                        // 좌회전
+      else if (keys["d"]) turnSpeed = -turnRate;                   // 우회전
+      else turnSpeed = 0;
+
+      // ----- 회전 및 이동 -----
+      car.rotation.y += turnSpeed;                                 // 차체 회전
+      car.position.x += Math.sin(car.rotation.y) * speed;          // 방향 기반 이동
+      car.position.z += Math.cos(car.rotation.y) * speed * -1;
+
+      // ----- 감속 (마찰 효과) -----
+      speed *= friction;
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
