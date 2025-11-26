@@ -18,7 +18,7 @@ controls.update();
 const light = new THREE.PointLight(0xffffff, 1.2);
 light.position.set(5, 6, 5);
 scene.add(light);
-scene.add(new THREE.AmbientLight(0x404040)); // 약간의 주변광
+scene.add(new THREE.AmbientLight(0x404040)); // 주변광
 
 // 바닥
 const floorGeo = new THREE.BoxGeometry(10, 0.1, 10);

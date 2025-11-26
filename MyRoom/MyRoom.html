@@ -19,7 +19,8 @@
             "imports" : {
                 "three" : "https://unpkg.com/three@0.150.1/build/three.module.js",
                 "three/addons/" : "https://unpkg.com/three@0.150.1/examples/jsm/",
-                "three/examples/jsm/controls/DragControls.js": "https://unpkg.com/three@0.150.1/examples/jsm/controls/DragControls.js"
+                "three/examples/jsm/controls/DragControls.js": "https://unpkg.com/three@0.150.1/examples/jsm/controls/DragControls.js",
+                "three/examples/jsm/loaders/GLTFLoader.js": "https://unpkg.com/three@0.150.1/examples/jsm/loaders/GLTFLoader.js"
             }
         }
     </script>
@@ -31,6 +32,8 @@
     import * as THREE from "three" ;
     import {OrbitControls} from "three/addons/controls/OrbitControls.js" ;
     import {DragControls} from 'three/examples/jsm/controls/DragControls.js';
+    import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+
 
     // ==========================================================
     // 기본 설정
@@ -49,6 +52,9 @@
     document.getElementById("WebGL-output").appendChild(renderer.domElement);
 
     const textureLoader = new THREE.TextureLoader();
+
+    const loader = new GLTFLoader();
+
 
     // 바닥 텍스처
     const floorTexture = textureLoader.load('https://threejs.org/examples/textures/hardwood2_diffuse.jpg');
@@ -318,17 +324,40 @@
     deskSetupGroup.add(Monitor2);
 
     // 키보드 
-    const keyboardBase = createBoxMesh(26, 0.6, 8, 0x111111, 'KeyboardBase');
-    keyboardBase.position.set(-4.5, 19.4, 5);
-    keyboardBase.castShadow = true;
-    keyboardBase.receiveShadow = true;
-    deskSetupGroup.add(keyboardBase);
+    // const keyboardBase = createBoxMesh(26, 0.6, 8, 0x111111, 'KeyboardBase');
+    // keyboardBase.position.set(-4.5, 19.4, 5);
+    // keyboardBase.castShadow = true;
+    // keyboardBase.receiveShadow = true;
+    // deskSetupGroup.add(keyboardBase);
 
-    const keycaps = createBoxMesh(25, 0.4, 7, 0x222222, 'Keycaps');
-    keycaps.position.set(0, 0.6, 0);
-    keycaps.castShadow = false;
-    keycaps.receiveShadow = true;
-    keyboardBase.add(keycaps);
+    loader.load(
+        "./keyboard.glb",   
+        (gltf) => {
+            const keyboardModel = gltf.scene;
+
+            // 크기, 위치, 그림자 조절
+            keyboardModel.scale.set(70, 70, 70);  
+            keyboardModel.position.set(-4.5, 20 , 5);
+            keyboardModel.traverse((obj) => {
+                if (obj.isMesh) {
+                    obj.castShadow = true;
+                    obj.receiveShadow = true;
+                }
+            });
+
+            deskSetupGroup.add(keyboardModel);
+        },
+        undefined,
+        (error) => {
+            console.error("GLB 로딩 실패:", error);
+        }
+    );
+
+    // const keycaps = createBoxMesh(25, 0.4, 7, 0x222222, 'Keycaps');
+    // keycaps.position.set(0, 0.6, 0);
+    // keycaps.castShadow = false;
+    // keycaps.receiveShadow = true;
+    // keyboardBase.add(keycaps);
 
     // 마우스패드 + 마우스
     const MousePad = createBoxMesh(13, 0.25, 11, 0x333333, 'MousePad');
@@ -418,15 +447,15 @@
     });
 
     const bookDepth = 5;
-    const bookZ = shelfDepth / 2 - bookDepth / 2 - 0.5; // 앞쪽
+    const bookZ = shelfDepth / 2 - bookDepth / 2 - 0.5 ; // 앞쪽
     const bookColors = [0x990000, 0x006699, 0x009900, 0xffaa00, 0x663399];
 
     shelfYPositions.forEach((y, idxY) => {
         for (let i = 0; i < 4; i++) {
             const bw = 1.2 + Math.random() * 0.8;
-            const bh = 8 + Math.random() * 4;
+            const bh = 8 ;
             const book = createBoxMesh(bw, bh, bookDepth, bookColors[(idxY + i) % bookColors.length], `Book_${idxY}_${i}`);
-            const offsetX = -shelfWidth / 2 + 4 + i * 3.5 + Math.random();
+            const offsetX = -shelfWidth / 2 + 4 + i * 3.5 ;
             book.position.set(offsetX, y + bh / 2 + 1, bookZ);
             shelfGroup.add(book);
         }
@@ -527,10 +556,33 @@
     scene.add(AirPurifier);
 
     // 베이스기타
-    const BassGuitar = createBoxMesh(5, 50, 1, 0x442200, 'BassGuitar');
-    BassGuitar.position.set(-40 , 25, 20);
-    BassGuitar.rotation.z = Math.PI / 10;
-    scene.add(BassGuitar);
+    // const BassGuitar = createBoxMesh(5, 50, 1, 0x442200, 'BassGuitar');
+    // BassGuitar.position.set(-40 , 25, 20);
+    // BassGuitar.rotation.z = Math.PI / 10;
+    // scene.add(BassGuitar);
+    loader.load(
+        "./bass_guitar.glb",   
+        (gltf) => {
+            const BassGuitar = gltf.scene;
+
+            // 크기, 위치, 그림자 조절
+            BassGuitar.scale.set(30, 30, 30);  
+            BassGuitar.position.set(-40 , 25, 20);
+            BassGuitar.rotation.set(0, 0, Math.PI / 4);     
+            BassGuitar.traverse((obj) => {
+                if (obj.isMesh) {
+                    obj.castShadow = true;
+                    obj.receiveShadow = true;
+                }
+            });
+
+            scene.add(BassGuitar);
+        },
+        undefined,
+        (error) => {
+            console.error("GLB 로딩 실패:", error);
+        }
+    );
 
     // 침대 옆/뒤 그림
     const pictureTexture = textureLoader.load(
@@ -564,7 +616,7 @@
     scene.add(Lamp2);
 
     const LightSwitch = createBoxMesh(5, 5, 0.5, 0xffffff, 'LightSwitch');
-    LightSwitch.position.set(49.75, 4, 10);
+    LightSwitch.position.set(26  , 25,  50);
     scene.add(LightSwitch);
 
     // ====================================================================
@@ -612,7 +664,7 @@
         });
     });
 
-    [Door, AirPurifier, BassGuitar, Picture, Lamp1, Lamp2, LightSwitch].forEach(obj => {
+    [Door, AirPurifier, /*BassGuitar,*/ Picture, Lamp1, Lamp2, LightSwitch].forEach(obj => {
         obj.castShadow = true;
         obj.receiveShadow = true;
     });
@@ -625,7 +677,7 @@
         deskSetupGroup,
         Door,
         AirPurifier,
-        BassGuitar
+        // BassGuitar
     ];
 
     const dragControls = new DragControls(
