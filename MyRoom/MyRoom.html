@@ -31,6 +31,7 @@
 <script type="module">
     import * as THREE from "three" ;
     import {OrbitControls} from "three/addons/controls/OrbitControls.js" ;
+    import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
     import {DragControls} from 'three/examples/jsm/controls/DragControls.js';
     import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
     import Stats from "three/addons/libs/stats.module.js";
@@ -241,22 +242,22 @@
     // 3-1. Bedding Group (침대)
 
     // ====== Bedding 텍스처 로드 ======
-    const mattressTexture = textureLoader.load('./mattress_texture.png');
+    const mattressTexture = textureLoader.load('./assets/textures/mattress_texture.png');
     mattressTexture.wrapS = mattressTexture.wrapT = THREE.RepeatWrapping;
     mattressTexture.repeat.set(1, 1);
     mattressTexture.encoding = THREE.sRGBEncoding;
 
-    const sheetTexture = textureLoader.load('./sheet_texture.jpg');
+    const sheetTexture = textureLoader.load('./assets/textures/sheet_texture.jpg');
     sheetTexture.wrapS = sheetTexture.wrapT = THREE.RepeatWrapping;
     sheetTexture.repeat.set(2, 2);
     sheetTexture.encoding = THREE.sRGBEncoding;
 
-    const duvetTexture = textureLoader.load('./duvet_texture.jpg');  
+    const duvetTexture = textureLoader.load('./assets/textures/duvet_texture.jpg');  
     duvetTexture.wrapS = duvetTexture.wrapT = THREE.RepeatWrapping;
     duvetTexture.repeat.set(1, 1);
     duvetTexture.encoding = THREE.sRGBEncoding;
 
-    const pillowTexture = textureLoader.load('./pillow_texture.jpg');
+    const pillowTexture = textureLoader.load('./assets/textures/pillow_texture.jpg');
     pillowTexture.wrapS = pillowTexture.wrapT = THREE.RepeatWrapping;
     pillowTexture.repeat.set(1.5, 1.5);
     pillowTexture.encoding = THREE.sRGBEncoding;
@@ -450,7 +451,7 @@
     // deskSetupGroup.add(keyboardBase);
 
     loader.load(
-        "./keyboard.glb",   
+        "./assets/models/keyboard.glb",
         (gltf) => {
             const keyboardModel = gltf.scene;
 
@@ -517,7 +518,7 @@
     // Computer.position.set(30, 6, 0);
     // deskSetupGroup.add(Computer);
     loader.load(
-        "./Computer.glb",   
+        "./assets/models/Computer.glb",   
         (gltf) => {
             Computer = gltf.scene;
 
@@ -752,7 +753,7 @@
     // });
     let Shirts = null ;
     loader.load(
-        "./hangersAndShirts.glb",   
+        "./assets/models/hangersAndShirts.glb",   
         (gltf) => {
             Shirts = gltf.scene;
 
@@ -814,7 +815,7 @@
     // BassGuitar.rotation.z = Math.PI / 10;
     // scene.add(BassGuitar);
     loader.load(
-        "./bass_guitar.glb",   
+        "./assets/models/bass_guitar.glb",   
         (gltf) => {
             const BassGuitar = gltf.scene;
 
@@ -839,7 +840,7 @@
 
     // 침대 옆 그림
     const pictureTexture = textureLoader.load(
-        './catImage.png'
+        './assets/images/catImage.png'
     );
     pictureTexture.encoding = THREE.sRGBEncoding;
 
@@ -909,7 +910,7 @@
     // scene.add(LightSwitch);
     let LightSwitch = null;
     loader.load(
-        "./light_switch.glb",   
+        "./assets/models/light_switch.glb",   
         (gltf) => {
             LightSwitch = gltf.scene;
 
@@ -992,10 +993,63 @@
         renderer.domElement
     );
 
-    const orbitControls = new OrbitControls(camera, renderer.domElement);
-    orbitControls.enableDamping = true;
-    orbitControls.dampingFactor = 0.05;
-    orbitControls.update();
+    const controls = new TrackballControls(camera, renderer.domElement);
+      const moveSpeed = 3; //이동 속도
+
+    window.addEventListener('keydown', (event) => {
+        const key = event.code;
+
+        // 카메라 앞/옆 방향 벡터 구하기
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);      // 카메라가 바라보는 방향 (앞)
+
+        const up = new THREE.Vector3(0, 1, 0);  // 월드 기준 위
+        const right = new THREE.Vector3().crossVectors(forward, up).normalize();
+
+        let move = new THREE.Vector3();
+
+        // WASD / 화살표에 따라 이동 방향 설정
+        if (key === 'KeyW' || key === 'ArrowUp') {
+            move.add(forward);
+        }
+        if (key === 'KeyS' || key === 'ArrowDown') {
+            move.add(forward.clone().multiplyScalar(-1));
+        }
+        if (key === 'KeyA' || key === 'ArrowLeft') {
+            move.add(right.clone().multiplyScalar(-1));
+        }
+        if (key === 'KeyD' || key === 'ArrowRight') {
+            move.add(right);
+        }
+        // 위/아래 이동
+        if (key === 'KeyQ') {
+            move.add(new THREE.Vector3(0, 1, 0));   // 위로
+        }
+        if (key === 'KeyE') {
+            move.add(new THREE.Vector3(0, -1, 0));  // 아래로
+        }
+
+        if (move.lengthSq() > 0) {
+            move.normalize().multiplyScalar(moveSpeed);
+
+            // 카메라와 TrackballControls의 타겟을 함께 이동
+            camera.position.add(move);
+            controls.target.add(move);
+
+            controls.update();
+        }
+    });
+
+    // orbitControls.enableDamping = true;
+    // orbitControls.dampingFactor = 0.05;
+    controls.rotateSpeed = 2.0 ;
+    controls.zoomSpeed = 1.2 ;
+    controls.panSpeed = 0.8 ;
+    controls.staticMoving = true ;
+    controls.dynamicDampingFactor = 0.15 ;
+
+    controls.target.set(0, 20, 0) ;
+    controls.update();
 
 
     // Mouse 이동 제한
@@ -1015,10 +1069,10 @@
     });
 
     dragControls.addEventListener('dragstart', () => {
-        orbitControls.enabled = false;
+        controls.enabled = false;
     });
     dragControls.addEventListener('dragend', () => {
-        orbitControls.enabled = true;
+        controls.enabled = true;
     });
 
     // 공 생성 함수
@@ -1218,7 +1272,7 @@
         ball2D.position.set(x, -y, 0.01);
     }
 
-        orbitControls.update();
+        controls.update();
         renderer.render(scene, camera);
     }
 
