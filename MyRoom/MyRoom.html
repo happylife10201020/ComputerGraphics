@@ -33,6 +33,7 @@
     import {OrbitControls} from "three/addons/controls/OrbitControls.js" ;
     import {DragControls} from 'three/examples/jsm/controls/DragControls.js';
     import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+    import Stats from "three/addons/libs/stats.module.js";
 
 
     // ==========================================================
@@ -45,24 +46,33 @@
     camera.position.set(110, 90, 110);
 
     const renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));  // 또는 1.0 고정도 가능
+    renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
     document.getElementById("WebGL-output").appendChild(renderer.domElement);
+
+    const stats = new Stats();
+    stats.dom.style.position = 'absolute';
+    stats.dom.style.left = '0px';
+    stats.dom.style.top = '0px';
+    document.body.appendChild(stats.dom);
 
     const textureLoader = new THREE.TextureLoader();
 
     const loader = new GLTFLoader();
 
-
+    // ==========================================================
     // 바닥 텍스처
+    // ==========================================================
     const floorTexture = textureLoader.load('https://threejs.org/examples/textures/hardwood2_diffuse.jpg');
     floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set(4, 4);
 
     // ====================================================================
-    // 헬퍼 함수: 박스 메쉬 생성
+    // 박스 메쉬 생성
     // ====================================================================
     function createBoxMesh(width, height, depth, color, name = '') {
         const geometry = new THREE.BoxGeometry(width, height, depth);
@@ -146,7 +156,7 @@
     // ====================================================================
     // 천장 네모난 전등
     // ====================================================================
-    const ceilingLightGeom = new THREE.BoxGeometry(30, 0.8, 18);
+    const ceilingLightGeom = new THREE.BoxGeometry(23, 0.8, 23 );
     const ceilingLightMat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         emissive: 0xffffee,
@@ -168,13 +178,18 @@
     // 2. 문과 창문 그룹
     // ====================================================================
 
+    // 문 Pivot 그룹
+    const DoorPivot = new THREE.Group();
+    DoorPivot.position.set(45, 15, 49.5);   // 기존 Door 위치
+    scene.add(DoorPivot);
+
     // Door
     const Door = createBoxMesh(15, 30, 1, 0x8b5a2b, 'Door');
     Door.rotation.set(0, Math.PI, 0);
-    Door.position.set(40, 15, 49.5);
+    Door.position.set(-15/2, 0, 0);
     Door.castShadow = true;
     Door.receiveShadow = true;
-    scene.add(Door);
+    DoorPivot.add(Door);
 
     const DoorHandle = createBoxMesh(1, 1, 1, 0xd4af37, 'DoorHandle');
     DoorHandle.position.set(5, 0, 0);
@@ -219,53 +234,149 @@
     const Window_2_Group = createWindowGroup(35, 35, 0x96c9ff, 20, 40, -49.5, 'Window_2_Group', winRotation);
     scene.add(Window_2_Group);
 
-    const Window_3_Group = createWindowGroup(
-        35, 35, 0x96c9ff,
-        -49.5, 40, 20,
-        'Window_3_Group',
-        new THREE.Vector3(0, Math.PI / 2, 0)
-    );
-    scene.add(Window_3_Group);
-
     // ====================================================================
     // 3. 가구 그룹 
     // ====================================================================
 
     // 3-1. Bedding Group (침대)
+
+    // ====== Bedding 텍스처 로드 ======
+    const mattressTexture = textureLoader.load('./mattress_texture.png');
+    mattressTexture.wrapS = mattressTexture.wrapT = THREE.RepeatWrapping;
+    mattressTexture.repeat.set(1, 1);
+    mattressTexture.encoding = THREE.sRGBEncoding;
+
+    const sheetTexture = textureLoader.load('./sheet_texture.jpg');
+    sheetTexture.wrapS = sheetTexture.wrapT = THREE.RepeatWrapping;
+    sheetTexture.repeat.set(2, 2);
+    sheetTexture.encoding = THREE.sRGBEncoding;
+
+    const duvetTexture = textureLoader.load('./duvet_texture.jpg');  
+    duvetTexture.wrapS = duvetTexture.wrapT = THREE.RepeatWrapping;
+    duvetTexture.repeat.set(1, 1);
+    duvetTexture.encoding = THREE.sRGBEncoding;
+
+    const pillowTexture = textureLoader.load('./pillow_texture.jpg');
+    pillowTexture.wrapS = pillowTexture.wrapT = THREE.RepeatWrapping;
+    pillowTexture.repeat.set(1.5, 1.5);
+    pillowTexture.encoding = THREE.sRGBEncoding;
+
+
+    // ====== Bedding Group 생성 ======
     const beddingGroup = new THREE.Group();
     beddingGroup.position.set(-15, 0, -15);
     beddingGroup.rotation.set(0, Math.PI / 2, 0);
     beddingGroup.name = 'Bedding Group';
 
-    const bedMesh = createBoxMesh(40, 10, 60, 0xf2d9d9, 'bed');
+    // 침대 프레임
+    const mattressGeom = new THREE.BoxGeometry(40, 10, 60);
+    const mattressMat = new THREE.MeshStandardMaterial({
+        map: mattressTexture,
+        metalness: 0,
+        roughness: 0.9
+    });
+    const bedMesh = new THREE.Mesh(mattressGeom, mattressMat);
+    bedMesh.name = 'bed';
     bedMesh.position.y = 5;
     bedMesh.castShadow = true;
     bedMesh.receiveShadow = true;
     beddingGroup.add(bedMesh);
 
+    // 침대 머리판
     const BedHead = createBoxMesh(62, 30, 3, 0x8b4513, 'BedHead');
     BedHead.position.set(0, 15, -31.5);
     BedHead.castShadow = true;
     BedHead.receiveShadow = true;
     beddingGroup.add(BedHead);
 
-    const Pillow1 = createBoxMesh(15, 5, 20, 0xffffff, 'Pillow1');
-    Pillow1.position.set(-10, 8.5, -20);
+    // ====== 베개 (동글납작한 형태) ======
+    const pillowGeom = new THREE.SphereGeometry(8, 32 , 32); 
+    pillowGeom.scale(1.3 , 0.4, 1.1 );  
+
+    const pillowMat = new THREE.MeshStandardMaterial({
+        map: pillowTexture,     // 텍스처 쓰고 싶으면 pillow_texture.jpg
+        color: 0xffffff,
+        metalness: 0,
+        roughness: 0.8
+    });
+
+    // 왼쪽 베개
+    const Pillow1 = new THREE.Mesh(pillowGeom, pillowMat);
+    Pillow1.name = 'Pillow1';
+    Pillow1.position.set(-10, 13  , -20);
+    Pillow1.castShadow = true;
+    Pillow1.receiveShadow = true;
     beddingGroup.add(Pillow1);
 
-    const Pillow2 = createBoxMesh(15, 5, 20, 0xffffff, 'Pillow2');
-    Pillow2.position.set(10, 8.5, -20);
+    // 오른쪽 베개
+    const Pillow2 = new THREE.Mesh(pillowGeom, pillowMat.clone());
+    Pillow2.name = 'Pillow2';
+    Pillow2.position.set(10, 13 , -20);
+    Pillow2.castShadow = true;
+    Pillow2.receiveShadow = true;
     beddingGroup.add(Pillow2);
 
-    const BottomSheet = createBoxMesh(40, 0.5, 60, 0xfafafa, 'BottomSheet');
+
+    const bottomSheetGeom = new THREE.BoxGeometry(40, 0.5, 60);
+    const bottomSheetMat = new THREE.MeshStandardMaterial({
+        map: sheetTexture,
+        metalness: 0,
+        roughness: 0.9
+    });
+    const BottomSheet = new THREE.Mesh(bottomSheetGeom, bottomSheetMat);
+    BottomSheet.name = 'BottomSheet';
     BottomSheet.position.y = 10.25;
+    BottomSheet.castShadow = true;
+    BottomSheet.receiveShadow = true;
     beddingGroup.add(BottomSheet);
 
-    const Duvet = createBoxMesh(40, 4, 45, 0x87cefa, 'Duvet');
+    // ====== 이불  ======
+    const duvetWidth  = 40;
+    const duvetDepth  = 45;
+    const duvetGeom = new THREE.PlaneGeometry(duvetWidth, duvetDepth, 30, 30);
+
+    duvetGeom.rotateX(-Math.PI / 2);
+
+    // 주름
+    const pos = duvetGeom.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+
+        const nx = x / (duvetWidth / 2);
+        const nz = z / (duvetDepth / 2);
+        const dist2 = nx*nx + nz*nz;      
+        const centerFactor = Math.max(0, 1 - dist2); 
+
+        const baseHeight = 1.2 * centerFactor;       
+        const noise = (Math.random() - 0.5) * 0.1;    // 약간의 주름 노이즈
+
+        pos.setY(i, baseHeight + noise * centerFactor);
+    }
+    pos.needsUpdate = true;
+    duvetGeom.computeVertexNormals();  
+
+    const duvetMat = new THREE.MeshStandardMaterial({
+        map: duvetTexture,   
+        color: 0xffffff,
+        metalness: 0,
+        roughness: 0.9,
+        side: THREE.DoubleSide  
+    });
+
+    const Duvet = new THREE.Mesh(duvetGeom, duvetMat);
+    Duvet.name = 'Duvet';
+
+
     Duvet.position.set(0, 10.5, 7.5);
+    Duvet.castShadow = true;
+    Duvet.receiveShadow = true;
     beddingGroup.add(Duvet);
 
+
     scene.add(beddingGroup);
+
+
 
     // 3-2. Desk Setup Group
     const deskSetupGroup = new THREE.Group();
@@ -315,13 +426,21 @@
     });
 
     // 모니터 2대
-    const Monitor1 = createBoxMesh(12, 7.5, 1, 0x111111, 'Monitor1');
+    const Monitor1 = createBoxMesh(12, 9.5, 1, 0x111111, 'Monitor1');
     Monitor1.position.set(-10, 24, -5);
     deskSetupGroup.add(Monitor1);
 
-    const Monitor2 = createBoxMesh(20, 13, 1, 0x111111, 'Monitor2');
+    const Monitor2 = createBoxMesh(20, 15, 1, 0x111111, 'Monitor2');
     Monitor2.position.set(7, 24, -5);
     deskSetupGroup.add(Monitor2);
+
+    // 모니터 화면용 2D Plane
+    const screenPlaneGeom = new THREE.PlaneGeometry(20, 14);
+    const screenPlaneMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const screenPlane = new THREE.Mesh(screenPlaneGeom, screenPlaneMat);
+    screenPlane.position.set(0, 0, 0.6);
+    Monitor2.add(screenPlane);
+
 
     // 키보드 
     // const keyboardBase = createBoxMesh(26, 0.6, 8, 0x111111, 'KeyboardBase');
@@ -379,27 +498,63 @@
     Mouse.receiveShadow = true;
     deskSetupGroup.add(Mouse);
 
+    // 마우스 이동 제어를 위한 기준값들
+    const mouseFixedY = Mouse.position.y;   // y 고정값
+
+    const padCenterX = MousePad.position.x;
+    const padCenterZ = MousePad.position.z;
+    const padHalfW = 13 / 2;   // MousePad의 가로(13)
+    const padHalfD = 11 / 2;   // MousePad의 세로(11)
+
+    const margin = 0.5;
+    const minX = padCenterX - padHalfW + margin;
+    const maxX = padCenterX + padHalfW - margin;
+    const minZ = padCenterZ - padHalfD + margin;
+    const maxZ = padCenterZ + padHalfD - margin;
+
     // 컴퓨터 본체
-    const Computer = createBoxMesh(6, 12, 15, 0x444444, 'Computer');
-    Computer.position.set(30, 6, 0);
-    deskSetupGroup.add(Computer);
+    // const Computer = createBoxMesh(6, 12, 15, 0x444444, 'Computer');
+    // Computer.position.set(30, 6, 0);
+    // deskSetupGroup.add(Computer);
+    loader.load(
+        "./Computer.glb",   
+        (gltf) => {
+            Computer = gltf.scene;
+
+            // 크기, 위치, 그림자 조절
+            Computer.scale.set(5, 5, 5 );  
+            Computer.position.set(30, 0  , 0);
+            Computer.rotation.y = -Math.PI / 2 ;
+            Computer.traverse((obj) => {
+                if (obj.isMesh) {
+                    obj.castShadow = true;
+                    obj.receiveShadow = true;
+                }
+            });
+
+            deskSetupGroup.add(Computer);
+        },
+        undefined,
+        (error) => {
+            console.error("GLB 로딩 실패:", error);
+        }
+    );
 
     // 스피커 2개
     const Speaker1 = createBoxMesh(3, 3, 3, 0x000000, 'Speaker1');
-    Speaker1.position.set(-20, 19.5, -12);
+    Speaker1.position.set(-20, 21 , -12);
     deskSetupGroup.add(Speaker1);
 
     const Speaker2 = createBoxMesh(3, 3, 3, 0x000000, 'Speaker2');
-    Speaker2.position.set(20, 19.5, -12);
+    Speaker2.position.set(20, 21 , -12);
     deskSetupGroup.add(Speaker2);
 
     scene.add(deskSetupGroup);
 
 
-    // 3-3. Storage Group (책장 + 옷장)
+    // 3-3. Storage Group 
     const storageGroup = new THREE.Group();
     storageGroup.name = 'Storage Group';
-    // 왼쪽 벽에 붙이고, 침대 쪽을 보도록 회전
     storageGroup.position.set(0 , 0, 40 );
     storageGroup.rotation.y = Math.PI / 1;
 
@@ -500,6 +655,7 @@
     wBack.position.set(0, 0, -wardrobeDepth / 2 + 0.75);
     wardrobeGroup.add(wBack);
 
+    // 옷걸이 봉
     const barGeometry = new THREE.CylinderGeometry(0.7, 0.7, wardrobeWidth - 6, 12);
     const barMaterial = new THREE.MeshStandardMaterial({
         color: 0xcccccc,
@@ -513,28 +669,112 @@
     hangerBar.receiveShadow = true;
     wardrobeGroup.add(hangerBar);
 
-    const clothesColors = [0x2b6fff, 0xff4f4f, 0xffc857, 0x3cb371];
-    const clothesCount = 5;
-    const clothesDepth = 6;
-    const clothesZ = wardrobeDepth / 2 - clothesDepth / 2 - 1;
-    for (let i = 0; i < clothesCount; i++) {
-        const cw = 4;
-        const ch = 18 + Math.random() * 4;
-        const cloth = createBoxMesh(cw, ch, clothesDepth, clothesColors[i % clothesColors.length], `Cloth_${i}`);
-        const gap = (wardrobeWidth - 10) / (clothesCount - 1);
-        const cx = -(wardrobeWidth - 10) / 2 + gap * i;
-        cloth.position.set(cx, hangerBar.position.y - ch / 2, clothesZ);
-        cloth.castShadow = true;
-        cloth.receiveShadow = true;
-        wardrobeGroup.add(cloth);
-    }
+    // 옷들
 
-    wardrobeGroup.traverse(o => {
-        if (o.isMesh) {
-            o.castShadow = true;
-            o.receiveShadow = true;
+    // 상의 메쉬 생성 함수
+    // function createClothMesh(width, height, depth, color, name = 'Cloth') {
+    //     const clothGroup = new THREE.Group();
+    //     clothGroup.name = name;
+
+    //     // 몸통
+    //     const bodyHeight = height * 0.7;
+    //     const body = createBoxMesh(width * 0.9, bodyHeight, depth, color);
+    //     body.position.y = -bodyHeight * 0.15;
+    //     clothGroup.add(body);
+
+    //     // 어깨 부분
+    //     const shoulderHeight = height * 0.25;
+    //     const shoulder = createBoxMesh(width, shoulderHeight, depth * 0.9, color);
+    //     shoulder.position.y = bodyHeight * 0.35;
+    //     clothGroup.add(shoulder);
+
+    //     // 왼쪽 소매
+    //     const sleeveWidth = width * 0.35;
+    //     const sleeveHeight = shoulderHeight * 0.9;
+    //     const sleeveDepth = depth * 0.8;
+
+    //     const leftSleeve = createBoxMesh(sleeveWidth, sleeveHeight, sleeveDepth, color);
+    //     leftSleeve.position.set(-width * 0.6, shoulder.position.y - sleeveHeight * 0.1, 0);
+    //     clothGroup.add(leftSleeve);
+
+    //     // 오른쪽 소매
+    //     const rightSleeve = createBoxMesh(sleeveWidth, sleeveHeight, sleeveDepth, color);
+    //     rightSleeve.position.set(width * 0.6, shoulder.position.y - sleeveHeight * 0.1, 0);
+    //     clothGroup.add(rightSleeve);
+
+    //     // 살짝 두께·굴곡 느낌을 위해 전체를 조금 기울이기
+    //     clothGroup.rotation.z = THREE.MathUtils.degToRad((Math.random() - 0.5) * 4);
+    //     clothGroup.rotation.y = THREE.MathUtils.degToRad((Math.random() - 0.5) * 6);
+
+    //     // 위쪽(옷걸이 쪽)을 피벗 근처로 맞추기
+    //     clothGroup.position.y += height * 0.3;
+
+    //     // 그림자
+    //     clothGroup.traverse(o => {
+    //         if (o.isMesh) {
+    //             o.castShadow = true;
+    //             o.receiveShadow = true;
+    //         }
+    //     });
+
+    //     return clothGroup;
+    // }
+
+
+    // const clothesColors = [0x2b6fff, 0xff4f4f, 0xffc857, 0x3cb371];
+    // const clothesCount = 5;
+    // const clothesDepth = 6;
+    // const clothesZ = wardrobeDepth / 2 - clothesDepth / 2 - 1;
+    // for (let i = 0; i < clothesCount; i++) {
+    //     const cw = 4;                      
+    //     const ch = 22 ;     
+    //     const color = clothesColors[i % clothesColors.length];
+
+    //     const cloth = createClothMesh(cw, ch, clothesDepth, color, `Cloth_${i}`);
+
+    //     const gap = (wardrobeWidth - 10) / (clothesCount - 1);
+    //     const cx = -(wardrobeWidth - 10) / 2 + gap * i;
+
+    //     cloth.position.set(
+    //         cx,
+    //         hangerBar.position.y - ch * 0.6,       
+    //         clothesZ
+    //     );
+
+    //     wardrobeGroup.add(cloth);
+    // }
+
+    // wardrobeGroup.traverse(o => {
+    //     if (o.isMesh) {
+    //         o.castShadow = true;
+    //         o.receiveShadow = true;
+    //     }
+    // });
+    let Shirts = null ;
+    loader.load(
+        "./hangersAndShirts.glb",   
+        (gltf) => {
+            Shirts = gltf.scene;
+
+            // 크기, 위치, 그림자 조절
+            Shirts.scale.set(3, 3, 3 );  
+            Shirts.position.set(0, 12.5   , 0);
+            Shirts.rotation.y = -Math.PI / 2 ;
+            Shirts.traverse((obj) => {
+                if (obj.isMesh) {
+                    obj.castShadow = true;
+                    obj.receiveShadow = true;
+                }
+            });
+
+            wardrobeGroup.add(Shirts);
+        },
+        undefined,
+        (error) => {
+            console.error("GLB 로딩 실패:", error);
         }
-    });
+    );
+
 
     storageGroup.add(wardrobeGroup);
     scene.add(storageGroup);
@@ -555,6 +795,19 @@
     AirPurifier.receiveShadow = true;
     scene.add(AirPurifier);
 
+    // 토러스 매듭 장식
+    const torus = new THREE.Mesh(
+        new THREE.TorusKnotGeometry(3, 1, 100, 16),
+        new THREE.MeshStandardMaterial({ color: 0x00bfff,
+        metalness: 0.4,
+        roughness: 0.3
+     })
+    );
+    torus.position.set(15, 25, 45);
+    torus.castShadow = true;
+    torus.receiveShadow = true;
+    scene.add(torus);
+
     // 베이스기타
     // const BassGuitar = createBoxMesh(5, 50, 1, 0x442200, 'BassGuitar');
     // BassGuitar.position.set(-40 , 25, 20);
@@ -567,10 +820,10 @@
 
             // 크기, 위치, 그림자 조절
             BassGuitar.scale.set(30, 30, 30);  
-            BassGuitar.position.set(-40 , 25, 20);
-            BassGuitar.rotation.set(0, 0, Math.PI / 4);     
-            BassGuitar.traverse((obj) => {
-                if (obj.isMesh) {
+            BassGuitar.position.set(-40 , 15, 20); 
+            BassGuitar.rotation.set(Math.PI / 2, Math.PI / 10 , -Math.PI / 4);       
+            BassGuitar.traverse((obj) => { 
+                if (obj.isMesh) { 
                     obj.castShadow = true;
                     obj.receiveShadow = true;
                 }
@@ -584,9 +837,9 @@
         }
     );
 
-    // 침대 옆/뒤 그림
+    // 침대 옆 그림
     const pictureTexture = textureLoader.load(
-        'https://upload.wikimedia.org/wikipedia/commons/5/57/Malevich.black-square.jpg'
+        './catImage.png'
     );
     pictureTexture.encoding = THREE.sRGBEncoding;
 
@@ -598,26 +851,25 @@
     });
     const pictureGeometry = new THREE.PlaneGeometry(20, 15);
     const Picture = new THREE.Mesh(pictureGeometry, pictureMaterial);
-    Picture.position.set(-15, 45, -49.6); // 침대 쪽 뒷벽
+    Picture.position.set(-49, 45, 20); // 침대 쪽 뒷벽
+    Picture.rotation.set(0, Math.PI / 2, 0);
     Picture.castShadow = false;
     Picture.receiveShadow = true;
-    //scene.add(Picture);
+    scene.add(Picture);
 
+
+    // 천장 램프 2개
     const Lamp1 = createBoxMesh(5, 5, 5, 0xfff4bf, 'Lamp1');
     Lamp1.position.set(-40, 65, 40);
     Lamp1.material.emissive = new THREE.Color(0xffe6a3);
     Lamp1.material.emissiveIntensity = 0.9;
-    scene.add(Lamp1);
+    //scene.add(Lamp1);
 
     const Lamp2 = createBoxMesh(5, 5, 5, 0xfff4bf, 'Lamp2');
     Lamp2.position.set(40, 65, -40);
     Lamp2.material.emissive = new THREE.Color(0xffe6a3);
     Lamp2.material.emissiveIntensity = 0.9;
-    scene.add(Lamp2);
-
-    const LightSwitch = createBoxMesh(5, 5, 0.5, 0xffffff, 'LightSwitch');
-    LightSwitch.position.set(26  , 25,  50);
-    scene.add(LightSwitch);
+    //scene.add(Lamp2);
 
     // ====================================================================
     // Light
@@ -628,7 +880,7 @@
     const sunLight = new THREE.DirectionalLight(0xfff2cc, 1.0);
     sunLight.position.set(120, 200, 80);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.mapSize.set(1024, 1024);
     sunLight.shadow.camera.left = -150;
     sunLight.shadow.camera.right = 150;
     sunLight.shadow.camera.top = 150;
@@ -652,6 +904,34 @@
     lamp2Light.position.y -= 2;
     scene.add(lamp2Light);
 
+    // const LightSwitch = createBoxMesh(5, 5, 0.5, 0xffffff, 'LightSwitch');
+    // LightSwitch.position.set(26  , 25,  50);
+    // scene.add(LightSwitch);
+    let LightSwitch = null;
+    loader.load(
+        "./light_switch.glb",   
+        (gltf) => {
+            LightSwitch = gltf.scene;
+
+            // 크기, 위치, 그림자 조절
+            LightSwitch.scale.set(70, 70, 70);  
+            LightSwitch.position.set(26  , 25,  50);
+            LightSwitch.rotation.set(0, Math.PI / 2 , 0);
+            LightSwitch.traverse((obj) => {
+                if (obj.isMesh) {
+                    // obj.castShadow = true;
+                    // obj.receiveShadow = true;
+                }
+            });
+
+            scene.add(LightSwitch);
+        },
+        undefined,
+        (error) => {
+            console.error("GLB 로딩 실패:", error);
+        }
+    );
+
     // ====================================================================
     // 그림자 설정
     // ====================================================================
@@ -664,7 +944,7 @@
         });
     });
 
-    [Door, AirPurifier, /*BassGuitar,*/ Picture, Lamp1, Lamp2, LightSwitch].forEach(obj => {
+    [/*Door,*/ AirPurifier, /*BassGuitar,*/ Picture, Lamp1, Lamp2 /*, LightSwitch*/].forEach(obj => {
         obj.castShadow = true;
         obj.receiveShadow = true;
     });
@@ -672,11 +952,37 @@
     // ====================================================================
     // Controls
     // ====================================================================
+
+    // ==========================================================
+    // 모니터에 띄울 애니메이션 설정
+    // ==========================================================
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+
+    // 모니터 위 빨간 공 애니메이션용
+    let rollingBall = null;
+    let ballAnimating = false;
+    let ballDirection = 1;
+    const ballRange = 8;      // 화면 좌우 이동 범위 (로컬 x)
+    const ballSpeed = 5;      // 초당 이동 속도
+
+
+    let ball2D = null ;
+    let ballVisible = false ;
+    let ballColor = 0xff0000 ;
+
+    let mouse2D = {x:0, y:0} ;
+
+    let Computer = null;
+
+    let lightsOn = true ;
+
     const draggableObjects = [
-        beddingGroup,
-        deskSetupGroup,
-        Door,
-        AirPurifier,
+        // beddingGroup,
+        // deskSetupGroup,
+        Mouse,
+        // Door,
+        // AirPurifier,
         // BassGuitar
     ];
 
@@ -691,6 +997,23 @@
     orbitControls.dampingFactor = 0.05;
     orbitControls.update();
 
+
+    // Mouse 이동 제한
+    dragControls.addEventListener('drag', (event) => {
+        const obj = event.object;
+        
+        // 마우스 패드 위에서만 마우스 이동 허용
+        if (obj === Mouse) {
+            obj.position.y = mouseFixedY; // 마우스 y 고정
+
+            // x, z를 패드 범위 안으로 제한
+            if (obj.position.x < minX) obj.position.x = minX;
+            if (obj.position.x > maxX) obj.position.x = maxX;
+            if (obj.position.z < minZ) obj.position.z = minZ;
+            if (obj.position.z > maxZ) obj.position.z = maxZ;
+            }
+    });
+
     dragControls.addEventListener('dragstart', () => {
         orbitControls.enabled = false;
     });
@@ -698,8 +1021,203 @@
         orbitControls.enabled = true;
     });
 
+    // 공 생성 함수
+    function create2DBall() {
+        if (ball2D) return;
+
+        const geo = new THREE.CircleGeometry(1.5, 32);
+        const mat = new THREE.MeshBasicMaterial({ color: ballColor });
+        ball2D = new THREE.Mesh(geo, mat);
+
+        // 화면 좌표계 안에서 움직여야 하므로 screenPlane에 자식으로 추가
+        screenPlane.add(ball2D);
+        ball2D.position.set(0, 0, 0.01);
+    }
+
+    function randomizeBallColor() {
+        if (!ball2D) return;
+        ballColor = Math.floor(Math.random() * 0xffffff);
+        ball2D.material.color.set(ballColor);
+    }
+
+    // 클릭시 이벤트 처리
+    function onPointerDown(event) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(pointer, camera);
+
+        // 컴퓨터 클릭 
+        const intersects = raycaster.intersectObject(Computer, true);
+        // 문 클릭 
+        const hitsDoor = raycaster.intersectObject(DoorPivot, true);
+        // 스위치 클릭 
+        const hitsSwitch = raycaster.intersectObject(LightSwitch, true);
+
+        // 컴퓨터 본체 클릭 시
+        if (intersects.length > 0) {
+
+            // 공 표시/숨김 토글
+            ballVisible = !ballVisible;
+
+            if (ballVisible) {
+                create2DBall();    // 공 생성
+            } else {
+                if (ball2D) {      // 공 제거
+                    screenPlane.remove(ball2D);
+                    ball2D = null;
+                }
+            }
+
+            return;   
+        }
+
+        // 문 클릭 시
+        if (hitsDoor.length > 0) {
+            if (!doorOpened) {
+                closeAction.stop();
+                openAction.reset().play();
+                doorOpened = true;
+            } else {
+                openAction.stop();
+                closeAction.reset().play();
+                doorOpened = false;
+            }
+            return;
+        }
+
+        // 스위치 클릭 시
+        if (hitsSwitch.length > 0) {
+            toggleLights() ; return ;
+        }
+
+        const mouseClick = raycaster.intersectObject(Mouse, true);
+        // 공이 보이는 상태에서 화면 클릭 → 색 랜덤 변경
+        if (mouseClick.length > 0) {
+            randomizeBallColor();
+        }
+    }
+
+    // 조명 토글 함수
+    function toggleLights() {
+        lightsOn = !lightsOn;
+
+        if (lightsOn) {
+            // 밝게
+            ambientLight.intensity = 0.25;
+            ceilingPoint.intensity = 0.9;
+            sunLight.intensity = 1.0;
+            lamp1Light.intensity = 0.5;
+            lamp2Light.intensity = 0.5;
+
+            // 스크린도 켜진 느낌
+            screenPlane.material.color.set(0x000000);
+        } else {
+            // 어둡게
+            ambientLight.intensity = 0.05;
+            ceilingPoint.intensity = 0.15;
+            sunLight.intensity = 0.3;
+            lamp1Light.intensity = 0.1;
+            lamp2Light.intensity = 0.1;
+
+            // 모니터 화면 꺼진 느낌
+            screenPlane.material.color.set(0x111111);
+        }
+    }
+
+
+    renderer.domElement.addEventListener('pointerdown', onPointerDown); 
+
+
+    // ==================================================================
+    // animation system
+    // ==================================================================
+    const mixer = new THREE.AnimationMixer(torus) ;
+    const doorMixer = new THREE.AnimationMixer(DoorPivot);
+
+    const times = [0, 2, 4] ;
+    const values = [
+        0,
+        Math.PI ,
+        Math.PI * 2
+    ] ;
+    let doorOpened = false ;
+
+    // --- track ---
+    const rotateTrack = new THREE.NumberKeyframeTrack(
+        '.rotation[y]',
+        times,
+        values
+    )
+    // 문 열기 트랙
+    const openTrack = new THREE.NumberKeyframeTrack(
+        '.rotation[y]', 
+        [0, 1],                   // 1초 동안
+        [0, -Math.PI / 2]
+    );
+    // 문 닫기 트랙
+    const closeTrack = new THREE.NumberKeyframeTrack(
+        '.rotation[y]', 
+        [0, 1],
+        [-Math.PI / 2, 0]
+    );
+
+    // --- clip ---
+    const clip = new THREE.AnimationClip(
+        'TorusRotateY', 4, [rotateTrack]
+    ) ;
+    const openClip = new THREE.AnimationClip('OpenDoor', 1, [openTrack]);
+    const closeClip = new THREE.AnimationClip('CloseDoor', 1, [closeTrack]);
+
+    const openAction = doorMixer.clipAction(openClip);
+    const closeAction = doorMixer.clipAction(closeClip);
+    openAction.setLoop(THREE.LoopOnce, 1);
+    openAction.clampWhenFinished = true;
+
+    closeAction.setLoop(THREE.LoopOnce, 1);
+    closeAction.clampWhenFinished = true;
+
+    const action = mixer.clipAction(clip) ;
+    action.loop = THREE.LoopRepeat ;
+    action.clampWhenFinished = false ;
+    action.play() ;
+
+    const clock = new THREE.Clock() ;
+
+    // ====================================================================
+    // 애니메이션 루프
+    // ====================================================================
+
     function animate() {
         requestAnimationFrame(animate);
+
+        const delta = clock.getDelta() ;
+
+        stats.update() ;
+        mixer.update(delta) ;
+        doorMixer.update(delta) ;
+        // controls.update();
+
+        // 모니터 위 빨간 공 애니메이션
+        if (ballVisible && ball2D) {
+
+        // MousePad의 범위를 -9 ~ +9 로 
+        const screenHalfW = 18 / 2;
+        const screenHalfH = 12 / 2;
+
+        // X축 매핑
+        const ratioX = (Mouse.position.x - minX) / (maxX - minX);
+        const x = THREE.MathUtils.lerp(-screenHalfW, screenHalfW, ratioX);
+
+        // Z축 매핑 -> 화면 Y축
+        const ratioY = (Mouse.position.z - minZ) / (maxZ - minZ);
+        const y = THREE.MathUtils.lerp(-screenHalfH, screenHalfH, ratioY);
+
+        // 공 이동
+        ball2D.position.set(x, -y, 0.01);
+    }
+
         orbitControls.update();
         renderer.render(scene, camera);
     }
