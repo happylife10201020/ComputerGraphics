@@ -1,5 +1,5 @@
 # Computer Graphics Project – MyRoom 3D Scene
-![alt text](./assets/gif/sampleVideo.gif)
+![alt text](./MyRoom/assets/gif/sampleVideo.gif)
 
 Student ID: 2022041069  
 Name: Lee Insu  
